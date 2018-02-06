@@ -1,8 +1,8 @@
 /*
 
-swift -frontend -c -sdk `xcrun --sdk macosx --show-sdk-path` -enable-objc-interop -emit-objc-header -emit-objc-header-path VideoWindow.h -import-objc-header bridging-header.h -c -o VideoWindow.o VideoWindow.swift VideoLayer.swift VideoView.swift `pkg-config --libs --cflags mpv`
-clang -isysroot `xcrun --sdk macosx --show-sdk-path` -c -I . main.m `pkg-config --cflags mpv`
-clang -isysroot `xcrun --sdk macosx --show-sdk-path` -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift_static/macosx -Xlinker -force_load_swift_libs -lc++ -o test main.o VideoWindow.o `pkg-config --libs --cflags mpv`
+swift -frontend -c -sdk `xcrun --sdk macosx --show-sdk-path` -enable-objc-interop -emit-objc-header -emit-objc-header-path VideoWindow.h -import-objc-header bridging-header.h -o VideoWindow.o VideoWindow.swift VideoLayer.swift VideoView.swift `pkg-config --libs --cflags mpv`
+clang -isysroot `xcrun --sdk macosx --show-sdk-path` -c -I . main.m window.m `pkg-config --cflags mpv`
+clang -isysroot `xcrun --sdk macosx --show-sdk-path` -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift_static/macosx -Xlinker -force_load_swift_libs -lc++ -o test main.o window.o VideoWindow.o `pkg-config --libs --cflags mpv`
 
 */
 
@@ -10,11 +10,13 @@ clang -isysroot `xcrun --sdk macosx --show-sdk-path` -L/Applications/Xcode.app/C
 
 #import <Cocoa/Cocoa.h>
 #import "VideoWindow.h"
+#import "window.h"
 
 
 
 @interface AppDelegate : NSObject <NSApplicationDelegate> {
     VideoWindow *vwindow;
+    Window *window2;
 }
 @end
 
@@ -32,6 +34,11 @@ clang -isysroot `xcrun --sdk macosx --show-sdk-path` -L/Applications/Xcode.app/C
 
     vwindow =
         [[VideoWindow alloc] initWithContentRect:NSMakeRect(300, 300, 1280, 720)
+                                       styleMask:mask
+                                         backing:NSBackingStoreBuffered
+                                           defer:NO];
+    window2 =
+        [[Window alloc] initWithContentRect:NSMakeRect(0, 0, 1280, 720)
                                        styleMask:mask
                                          backing:NSBackingStoreBuffered
                                            defer:NO];
