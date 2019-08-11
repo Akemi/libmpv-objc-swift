@@ -9,8 +9,8 @@ class VideoWindow: NSWindow, NSWindowDelegate {
     override var canBecomeKey: Bool { return true }
     override var canBecomeMain: Bool { return true }
 
-    override init(contentRect: NSRect, styleMask style: NSWindowStyleMask,
-                  backing backingStoreType: NSBackingStoreType, defer flag: Bool) {
+    override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask,
+                  backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect:contentRect, styleMask:style, backing:backingStoreType, defer:flag)
 
         title = "test"
@@ -71,7 +71,7 @@ class VideoWindow: NSWindow, NSWindowDelegate {
 
     func windowDidFailToExitFullScreen(_ window: NSWindow) {}
 
-    func windowShouldClose(_ sender: Any) -> Bool {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
         vlayer!.uninitMPV()
         return false
     }

@@ -3,7 +3,7 @@ import Cocoa
 class VideoView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame:frameRect)
-        autoresizingMask = [.viewWidthSizable, .viewHeightSizable]
+        autoresizingMask = [.width, .height]
         wantsBestResolutionOpenGLSurface = true
     }
 

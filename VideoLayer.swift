@@ -222,7 +222,7 @@ class VideoLayer: CAOpenGLLayer {
     }
 
     func initDisplayLink() {
-        let displayId = UInt32(NSScreen.main()!.deviceDescription["NSScreenNumber"] as! Int)
+        let displayId = UInt32(NSScreen.main?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as! Int)
 
         CVDisplayLinkCreateWithCGDisplay(displayId, &link)
         CVDisplayLinkSetOutputCallback(link!, displayLinkCallback,
