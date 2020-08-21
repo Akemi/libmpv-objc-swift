@@ -28,7 +28,7 @@ func updateCallback(_ ctx: UnsafeMutableRawPointer?) {
 class VideoLayer: CAOpenGLLayer {
 
     var mpv: OpaquePointer?
-    var mpvGLCBContext: OpaquePointer?
+    var mpvRenderContext: OpaquePointer?
     var surfaceSize: NSSize?
     var link: CVDisplayLink?
     var queue: DispatchQueue = DispatchQueue(label: "io.mpv.callbackQueue")
@@ -72,13 +72,26 @@ class VideoLayer: CAOpenGLLayer {
                        forLayerTime t: CFTimeInterval,
                        displayTime ts: UnsafePointer<CVTimeStamp>?) {
         var i: GLint = 0
+        var flip: CInt = 1
+        var ditherDepth = 8
         glGetIntegerv(GLenum(GL_DRAW_FRAMEBUFFER_BINDING), &i)
 
-        if mpvGLCBContext != nil {
+        if mpvRenderContext != nil {
             if inLiveResize == false {
                 surfaceSize = self.bounds.size
             }
-            mpv_opengl_cb_draw(mpvGLCBContext, i, Int32(surfaceSize!.width), Int32(-surfaceSize!.height))
+
+            var data = mpv_opengl_fbo(fbo: Int32(i),
+                                        w: Int32(surfaceSize!.width),
+                                        h: Int32(surfaceSize!.height),
+                          internal_format: 0)
+            var params: [mpv_render_param] = [
+                mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_FBO, data: &data),
+                mpv_render_param(type: MPV_RENDER_PARAM_FLIP_Y, data: &flip),
+                mpv_render_param(type: MPV_RENDER_PARAM_DEPTH, data: &ditherDepth),
+                mpv_render_param()
+            ]
+            mpv_render_context_render(mpvRenderContext, &params);
         } else {
             glClearColor(0, 0, 0, 1)
             glClear(GLbitfield(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ))
@@ -150,19 +163,24 @@ class VideoLayer: CAOpenGLLayer {
 
         checkError(mpv_initialize(mpv))
 
-        mpvGLCBContext = OpaquePointer(mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB))
-        if mpvGLCBContext == nil {
-            print("libmpv does not have the opengl-cb sub-API.")
+        let api = UnsafeMutableRawPointer(mutating: (MPV_RENDER_API_TYPE_OPENGL as NSString).utf8String)
+        var pAddress = mpv_opengl_init_params(get_proc_address: getProcAddress,
+                                              get_proc_address_ctx: nil,
+                                              extra_exts: nil)
+
+        var params: [mpv_render_param] = [
+            mpv_render_param(type: MPV_RENDER_PARAM_API_TYPE, data: api),
+            mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, data: &pAddress),
+            mpv_render_param()
+        ]
+
+        if (mpv_render_context_create(&mpvRenderContext, mpv, &params) < 0)
+        {
+            print("Render context init has failed.")
             exit(1)
         }
 
-        let r = mpv_opengl_cb_init_gl(mpvGLCBContext, nil, getProcAddress, nil)
-        if r < 0 {
-            print("gl init has failed.")
-            exit(1)
-        }
-
-        mpv_opengl_cb_set_update_callback(mpvGLCBContext, updateCallback,
+        mpv_render_context_set_update_callback(mpvRenderContext, updateCallback,
             UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()))
 
         mpv_set_wakeup_callback(mpv, { (ctx) in
@@ -198,9 +216,10 @@ class VideoLayer: CAOpenGLLayer {
     func handleEvent(_ event: UnsafePointer<mpv_event>!) {
         switch event.pointee.event_id {
         case MPV_EVENT_SHUTDOWN:
-            mpv_opengl_cb_uninit_gl(mpvGLCBContext)
-            mpvGLCBContext = nil
+            mpv_render_context_free(mpvRenderContext)
+            mpvRenderContext = nil
             mpv_detach_destroy(mpv)
+            mpv_terminate_destroy(mpv)
             mpv = nil
             NSApp.terminate(self)
         case MPV_EVENT_LOG_MESSAGE:
@@ -215,8 +234,8 @@ class VideoLayer: CAOpenGLLayer {
 
     let displayLinkCallback: CVDisplayLinkOutputCallback = { (displayLink, now, outputTime, flagsIn, flagsOut, displayLinkContext) -> CVReturn in
         let layer: VideoLayer = unsafeBitCast(displayLinkContext, to: VideoLayer.self)
-        if layer.mpvGLCBContext != nil {
-            mpv_opengl_cb_report_flip(layer.mpvGLCBContext, 0)
+        if layer.mpvRenderContext != nil {
+            mpv_render_context_report_swap(layer.mpvRenderContext)
         }
         return kCVReturnSuccess
     }
@@ -238,7 +257,7 @@ class VideoLayer: CAOpenGLLayer {
 
     func checkError(_ status: CInt) {
         if (status < 0) {
-            print("mpv API error:", mpv_error_string(status))
+            print("mpv API error:", mpv_error_string(status) as Any)
             exit(1)
         }
     }

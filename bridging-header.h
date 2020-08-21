@@ -1,2 +1,2 @@
 #import <mpv/client.h>
-#import <mpv/opengl_cb.h>
+#import <mpv/render_gl.h>
