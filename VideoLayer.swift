@@ -218,7 +218,6 @@ class VideoLayer: CAOpenGLLayer {
         case MPV_EVENT_SHUTDOWN:
             mpv_render_context_free(mpvRenderContext)
             mpvRenderContext = nil
-            mpv_detach_destroy(mpv)
             mpv_terminate_destroy(mpv)
             mpv = nil
             NSApp.terminate(self)
